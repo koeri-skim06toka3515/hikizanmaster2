@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>くりさがり ひきざんマスター</title>
+  <!-- かわいらしい丸ゴシックフォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <!-- 紙吹雪ライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f7f9fc;
+      --card-bg: #ffffff;
+      --primary: #ff7e67;
+      --primary-hover: #ff6347;
+      --secondary: #48bb78;
+      --accent: #4299e1;
+      --accent-hover: #3182ce;
+      --text: #2d3748;
+      --gold: #ecc94b;
+      --silver: #cbd5e0;
+      --bronze: #ed8936;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    /* ヘッダー */
+    header {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #e53e3e;
+      text-shadow: 1px 1px 0 #fff;
+    }
+
+    .sound-btn {
+      background: white;
+      border: 2px solid #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* モード選択タブ */
+    .tabs {
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+      background: #edf2f7;
+      padding: 6px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #718096;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.2;
+    }
+
+    .tab-btn span.sub {
+      font-size: 0.7rem;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: #2b6cb0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* メインコンテナ */
+    .container {
+      width: 100%;
+      max-width: 600px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 共通ステータスバー */
+    .status-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .timer-badge {
+      background: #fed7d7;
+      color: #c53030;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-badge {
+      background: #e2e8f0;
+      padding: 4px 14px;
+      border-radius: 9999px;
+    }
+
+    /* ===================
+       1. フラッシュカード
+       =================== */
+    .flashcard-wrapper {
+      perspective: 1000px;
+      width: 100%;
+      height: 240px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+
+    .flashcard-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .flashcard-inner.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 24px;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: white;
+      border: 4px solid #fed7d7;
+      padding: 16px;
+    }
+
+    .flashcard-back {
+      transform: rotateY(180deg);
+      border-color: #c6f6d5;
+      background: #f0fff4;
+    }
+
+    .card-formula {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: #2d3748;
+      letter-spacing: 2px;
+    }
+
+    .card-answer {
+      font-size: 4.5rem;
+      font-weight: 900;
+      color: #38a169;
+    }
+
+    .tap-hint {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #a0aec0;
+      font-weight: 700;
+    }
+
+    .flash-controls {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: all 0.15s ease;
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+      box-shadow: none;
+    }
+
+    .btn-next { background: var(--accent); color: white; }
+    .btn-prev { background: #e2e8f0; color: #4a5568; }
+    .btn-auto { background: #ed8936; color: white; }
+
+    /* ===================
+       2. 問題表示（練習 & テスト）
+       =================== */
+    .qa-box {
+      width: 100%;
+      background: white;
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      border: 3px solid #e2e8f0;
+    }
+
+    .formula-display {
+      font-size: 3.2rem;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 80px;
+    }
+
+    .answer-slot {
+      min-width: 65px;
+      height: 65px;
+      border-bottom: 4px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.2rem;
+      color: var(--accent);
+      font-weight: 900;
+      margin-left: 6px;
+    }
+
+    /* さくらんぼ計算ヒント（練習モード用） */
+    .sakuranbo-box {
+      margin-top: 14px;
+      padding: 10px 16px;
+      background: #fffaf0;
+      border: 2px dashed #fbd38d;
+      border-radius: 14px;
+      text-align: center;
+      width: 100%;
+      display: none;
+    }
+
+    .sakuranbo-box.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .sakuranbo-title {
+      font-size: 0.9rem;
+      color: #dd6b20;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .sakuranbo-content {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #7b341e;
+    }
+
+    /* テンキー */
+    .keypad {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .key-btn {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: inherit;
+      color: #2d3748;
+      padding: 12px 0;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      transition: all 0.1s ease;
+    }
+
+    .key-btn:active {
+      background: #edf2f7;
+      transform: translateY(2px);
+    }
+
+    .key-btn.action {
+      background: #feebc8;
+      color: #c05621;
+      font-size: 1.1rem;
+    }
+
+    /* ===================
+       結果画面 (モーダル風)
+       =================== */
+    .result-screen {
+      display: none;
+      width: 100%;
+      background: white;
+      border-radius: 24px;
+      padding: 30px 20px;
+      box-shadow: var(--shadow);
+      text-align: center;
+      animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .medal-icon {
+      font-size: 5rem;
+      margin-bottom: 10px;
+      animation: rotateMedal 1.2s ease infinite alternate;
+    }
+
+    .result-title {
+      font-size: 1.8rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .result-time-detail {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #4a5568;
+      margin-bottom: 16px;
+    }
+
+    .medal-criteria {
+      background: #edf2f7;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+
+    .medal-criteria div {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .best-badge {
+      display: inline-block;
+      background: #feebc8;
+      color: #c05621;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    /* アニメーション */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes rotateMedal {
+      from { transform: scale(1) rotate(-5deg); }
+      to { transform: scale(1.08) rotate(5deg); }
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.8); }
+      70% { transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* フィードバックのアニメーション */
+    .correct-pop {
+      animation: correctAnim 0.4s ease;
+    }
+
+    @keyframes correctAnim {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); color: #38a169; }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header>
+    <h1>🎯 くりさがり ひきざん</h1>
+    <button class="sound-btn" id="soundBtn" onclick="toggleSound()">
+      <span id="soundIcon">🔊</span>
+      <span id="soundText">おと ON</span>
+    </button>
+  </header>
+
+  <!-- モード切替タブ -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchMode('flashcard')">
+      🎴 カード
+      <span class="sub">めくって おぼえる</span>
+    </button>
+    <button class="tab-btn" onclick="switchMode('practice')">
+      ✏️ れんしゅう
+      <span class="sub">ヒントつき じっくり</span>
+    </button>
+    <button class="tab-btn" onclick="switchMode('test')">
+      ⏱️ テスト
+      <span class="sub">タイムアタック</span>
+    </button>
+  </div>
+
+  <div class="container">
+
+    <!-- フラッシュカード モード -->
+    <div id="flashcardSection" style="width: 100%;">
+      <div class="status-bar">
+        <span class="progress-badge" id="cardProgress">1 / 36</span>
+        <button class="sound-btn" style="font-size: 0.85rem;" onclick="toggleShuffle()">
+          <span id="shuffleState">🔀 じゅんばん通り</span>
+        </button>
+      </div>
+
+      <div class="flashcard-wrapper" onclick="flipCard()">
+        <div class="flashcard-inner" id="flashcardInner">
+          <div class="flashcard-front">
+            <div class="card-formula" id="cardFormula">15 - 8</div>
+            <div class="tap-hint">タップすると こたえが でるよ！</div>
+          </div>
+          <div class="flashcard-back">
+            <div class="card-formula" style="font-size: 2.2rem; color: #718096;" id="cardFormulaBack">15 - 8 =</div>
+            <div class="card-answer" id="cardAnswer">7</div>
+            <div class="tap-hint">もういちどタップで もんだいへ</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flash-controls">
+        <button class="btn btn-prev" onclick="prevCard()">◀ まえへ</button>
+        <button class="btn btn-auto" id="autoBtn" onclick="toggleAutoPlay()">▶ 自動めくり</button>
+        <button class="btn btn-next" onclick="nextCard()">つぎへ ▶</button>
+      </div>
+    </div>
+
+    <!-- 練習＆テスト モード -->
+    <div id="interactiveSection" style="display: none; width: 100%;">
+      <div class="status-bar">
+        <span class="progress-badge" id="quizProgress">第 1 / 10 問</span>
+        <span class="timer-badge" id="timerBadge" style="display: none;">⏱️ 00.0 秒</span>
+      </div>
+
+      <div class="qa-box" id="qaBox">
+        <div class="formula-display">
+          <span id="numA">14</span>
+          <span>-</span>
+          <span id="numB">8</span>
+          <span>=</span>
+          <div class="answer-slot" id="answerSlot">?</div>
+        </div>
+
+        <!-- さくらんぼ計算ヒント（練習モード用） -->
+        <div class="sakuranbo-box" id="sakuranboBox">
+          <div class="sakuranbo-title">💡 さくらんぼヒント（ひく10法）</div>
+          <div class="sakuranbo-content" id="sakuranboText">14を 10 と 4 に わけるよ！<br>10 - 8 = 2、2 と 4 で 「6」！</div>
+        </div>
+      </div>
+
+      <!-- テンキー -->
+      <div class="keypad">
+        <button class="key-btn" onclick="inputNumber(1)">1</button>
+        <button class="key-btn" onclick="inputNumber(2)">2</button>
+        <button class="key-btn" onclick="inputNumber(3)">3</button>
+        <button class="key-btn" onclick="inputNumber(4)">4</button>
+        <button class="key-btn" onclick="inputNumber(5)">5</button>
+        <button class="key-btn" onclick="inputNumber(6)">6</button>
+        <button class="key-btn" onclick="inputNumber(7)">7</button>
+        <button class="key-btn" onclick="inputNumber(8)">8</button>
+        <button class="key-btn" onclick="inputNumber(9)">9</button>
+        <button class="key-btn action" onclick="clearInput()">けす</button>
+        <button class="key-btn" onclick="inputNumber(0)">0</button>
+        <button class="key-btn action" id="hintToggleBtn" onclick="toggleHint()">ヒント</button>
+      </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div class="result-screen" id="resultScreen">
+      <div class="medal-icon" id="resultMedal">🥇</div>
+      <h2 class="result-title" id="resultTitle">たいへんよくできました！</h2>
+      <div class="result-time-detail" id="resultTime">タイム: 18.4 秒</div>
+      <div class="best-badge" id="bestBadge">👑 じこベスト: -- 秒</div>
+
+      <div class="medal-criteria" id="medalCriteriaBlock">
+        <div><span>🥇 きんメダル</span><span>20秒 以内（とても はやい！）</span></div>
+        <div><span>🥈 ぎんメダル</span><span>35秒 以内（はやい！）</span></div>
+        <div><span>🥉 どうメダル</span><span>60秒 以内（がんばった！）</span></div>
+      </div>
+
+      <button class="btn btn-next" style="width: 100%;" onclick="restartMode()">もう一度ちょうせんする！</button>
+    </div>
+
+  </div>
+
+  <script>
+    /* ============================================================
+       1. 繰り下がりのある引き算 (全36問) を完全網羅生成
+       条件: 11〜18の数 - 2〜9の数 で、一の位同士で引けないもの
+       ============================================================ */
+    function generateBorrowProblems() {
+      const problems = [];
+      for (let a = 11; a <= 18; a++) {
+        const onesA = a % 10;
+        for (let b = 2; b <= 9; b++) {
+          if (onesA < b && (a - b) < 10) {
+            problems.push({ a: a, b: b, ans: a - b });
+          }
+        }
+      }
+      return problems;
+    }
+
+    const allProblems = generateBorrowProblems(); // 36問
+    let currentMode = 'flashcard'; // 'flashcard', 'practice', 'test'
+    let soundEnabled = true;
+
+    // Web Audio API による効果音再生（外部通信不要）
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playTone(freq, type = 'sine', duration = 0.15, startTime = 0) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + startTime);
+        osc.stop(audioCtx.currentTime + startTime + duration);
+      } catch(e) {}
+    }
+
+    function soundCorrect() {
+      playTone(523.25, 'triangle', 0.1, 0);       // C5
+      playTone(659.25, 'triangle', 0.12, 0.08);   // E5
+      playTone(783.99, 'triangle', 0.2, 0.16);    // G5
+    }
+
+    function soundIncorrect() {
+      playTone(220, 'sawtooth', 0.15, 0);         // A3
+      playTone(196, 'sawtooth', 0.25, 0.15);      // G3
+    }
+
+    function soundFanfare() {
+      if (!soundEnabled) return;
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, idx) => {
+        playTone(freq, 'triangle', 0.25, idx * 0.12);
+      });
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundIcon').innerText = soundEnabled ? '🔊' : '🔇';
+      document.getElementById('soundText').innerText = soundEnabled ? 'おと ON' : 'おと OFF';
+    }
+
+    /* ============================================================
+       フラッシュカード モード ロジック
+       ============================================================ */
+    let flashList = [...allProblems];
+    let flashIdx = 0;
+    let isFlipped = false;
+    let autoInterval = null;
+    let isShuffled = false;
+
+    function initFlashcard() {
+      flashIdx = 0;
+      isFlipped = false;
+      document.getElementById('flashcardInner').classList.remove('flipped');
+      updateFlashCard();
+    }
+
+    function updateFlashCard() {
+      const p = flashList[flashIdx];
+      document.getElementById('cardFormula').innerText = `${p.a} - ${p.b}`;
+      document.getElementById('cardFormulaBack').innerText = `${p.a} - ${p.b} =`;
+      document.getElementById('cardAnswer').innerText = p.ans;
+      document.getElementById('cardProgress').innerText = `${flashIdx + 1} / ${flashList.length}`;
+    }
+
+    function flipCard() {
+      isFlipped = !isFlipped;
+      const card = document.getElementById('flashcardInner');
+      if (isFlipped) {
+        card.classList.add('flipped');
+        playTone(440, 'sine', 0.08);
+      } else {
+        card.classList.remove('flipped');
+      }
+    }
+
+    function nextCard() {
+      const card = document.getElementById('flashcardInner');
+      card.classList.remove('flipped');
+      isFlipped = false;
+      setTimeout(() => {
+        flashIdx = (flashIdx + 1) % flashList.length;
+        updateFlashCard();
+      }, 150);
+    }
+
+    function prevCard() {
+      const card = document.getElementById('flashcardInner');
+      card.classList.remove('flipped');
+      isFlipped = false;
+      setTimeout(() => {
+        flashIdx = (flashIdx - 1 + flashList.length) % flashList.length;
+        updateFlashCard();
+      }, 150);
+    }
+
+    function toggleAutoPlay() {
+      const btn = document.getElementById('autoBtn');
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btn.innerText = '▶ 自動めくり';
+        btn.classList.remove('btn-prev');
+        btn.classList.add('btn-auto');
+      } else {
+        btn.innerText = '⏹ とめる';
+        btn.classList.remove('btn-auto');
+        btn.classList.add('btn-prev');
+        autoInterval = setInterval(() => {
+          if (!isFlipped) {
+            flipCard();
+          } else {
+            nextCard();
+          }
+        }, 1800);
+      }
+    }
+
+    function toggleShuffle() {
+      isShuffled = !isShuffled;
+      document.getElementById('shuffleState').innerText = isShuffled ? '🔀 ランダム' : '📋 じゅんばん通り';
+      if (isShuffled) {
+        flashList.sort(() => Math.random() - 0.5);
+      } else {
+        flashList = [...allProblems];
+      }
+      flashIdx = 0;
+      updateFlashCard();
+    }
+
+    /* ============================================================
+       練習 & テスト モード ロジック
+       ============================================================ */
+    const TOTAL_QUIZ = 10;
+    let quizList = [];
+    let quizIdx = 0;
+    let timerStart = null;
+    let timerInterval = null;
+    let elapsedTime = 0;
+    let missCount = 0;
+
+    function initInteractive(mode) {
+      currentMode = mode;
+      quizIdx = 0;
+      missCount = 0;
+      // 36問からランダムに10問抽出
+      quizList = [...allProblems].sort(() => Math.random() - 0.5).slice(0, TOTAL_QUIZ);
+
+      document.getElementById('flashcardSection').style.display = 'none';
+      document.getElementById('interactiveSection').style.display = 'block';
+      document.getElementById('resultScreen').style.display = 'none';
+
+      const timerBadge = document.getElementById('timerBadge');
+      const hintBtn = document.getElementById('hintToggleBtn');
+
+      if (mode === 'test') {
+        timerBadge.style.display = 'inline-block';
+        hintBtn.style.visibility = 'hidden'; // テストではヒント非表示
+        startTimer();
+      } else {
+        timerBadge.style.display = 'none';
+        hintBtn.style.visibility = 'visible';
+        stopTimer();
+      }
+
+      loadQuestion();
+    }
+
+    function startTimer() {
+      timerStart = Date.now();
+      elapsedTime = 0;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        elapsedTime = (Date.now() - timerStart) / 1000;
+        document.getElementById('timerBadge').innerText = `⏱️ ${elapsedTime.toFixed(1)} 秒`;
+      }, 100);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function loadQuestion() {
+      const q = quizList[quizIdx];
+      document.getElementById('numA').innerText = q.a;
+      document.getElementById('numB').innerText = q.b;
+      document.getElementById('answerSlot').innerText = '?';
+      document.getElementById('quizProgress').innerText = `第 ${quizIdx + 1} / ${TOTAL_QUIZ} 問`;
+
+      // さくらんぼ計算ヒント文章を作成
+      const ones = q.a % 10;
+      const step1 = 10 - q.b;
+      const total = step1 + ones;
+      const hintHTML = `${q.a} を <strong>10</strong> と <strong>${ones}</strong> に わけるよ！<br>` +
+                       `10 から ${q.b} をひいて <strong>${step1}</strong>。<br>` +
+                       `のこりの ${ones} と ${step1} をあわせて <strong>${total}</strong>！`;
+      document.getElementById('sakuranboText').innerHTML = hintHTML;
+      document.getElementById('sakuranboBox').classList.remove('show');
+    }
+
+    function inputNumber(num) {
+      const slot = document.getElementById('answerSlot');
+      slot.innerText = num;
+      checkAnswer(num);
+    }
+
+    function clearInput() {
+      document.getElementById('answerSlot').innerText = '?';
+    }
+
+    function toggleHint() {
+      const box = document.getElementById('sakuranboBox');
+      box.classList.toggle('show');
+    }
+
+    function checkAnswer(val) {
+      const q = quizList[quizIdx];
+      const slot = document.getElementById('answerSlot');
+
+      if (val === q.ans) {
+        soundCorrect();
+        slot.classList.add('correct-pop');
+        setTimeout(() => {
+          slot.classList.remove('correct-pop');
+          quizIdx++;
+          if (quizIdx < TOTAL_QUIZ) {
+            loadQuestion();
+          } else {
+            finishQuiz();
+          }
+        }, 400);
+      } else {
+        soundIncorrect();
+        missCount++;
+        slot.style.color = '#e53e3e';
+        // 練習モードなら自動でさくらんぼヒントを開いてあげる
+        if (currentMode === 'practice') {
+          document.getElementById('sakuranboBox').classList.add('show');
+        }
+        setTimeout(() => {
+          slot.style.color = 'var(--accent)';
+          slot.innerText = '?';
+        }, 600);
+      }
+    }
+
+    function finishQuiz() {
+      stopTimer();
+      document.getElementById('interactiveSection').style.display = 'none';
+      document.getElementById('resultScreen').style.display = 'block';
+
+      const medalEl = document.getElementById('resultMedal');
+      const titleEl = document.getElementById('resultTitle');
+      const timeEl = document.getElementById('resultTime');
+      const criteriaEl = document.getElementById('medalCriteriaBlock');
+      const bestBadgeEl = document.getElementById('bestBadge');
+
+      if (currentMode === 'test') {
+        criteriaEl.style.display = 'block';
+        bestBadgeEl.style.display = 'inline-block';
+        timeEl.innerText = `かかった時間: ${elapsedTime.toFixed(1)} 秒 (ミス: ${missCount}回)`;
+
+        // ベストタイム記録 (localStorage)
+        const savedBest = localStorage.getItem('hikizan_best_time');
+        let isNewBest = false;
+        if (!savedBest || elapsedTime < parseFloat(savedBest)) {
+          localStorage.setItem('hikizan_best_time', elapsedTime.toFixed(1));
+          isNewBest = true;
+        }
+        const currentBest = localStorage.getItem('hikizan_best_time');
+        bestBadgeEl.innerText = `👑 じこベスト: ${currentBest} 秒 ${isNewBest ? ' (新きろく!)' : ''}`;
+
+        // メダル判定
+        if (elapsedTime <= 20) {
+          medalEl.innerText = '🥇';
+          titleEl.innerText = 'すばらしい！ きんメダル！';
+          titleEl.style.color = '#d69e2e';
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        } else if (elapsedTime <= 35) {
+          medalEl.innerText = '🥈';
+          titleEl.innerText = 'はやいぞ！ ぎんメダル！';
+          titleEl.style.color = '#718096';
+          confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+        } else {
+          medalEl.innerText = '🥉';
+          titleEl.innerText = 'よくがんばった！ どうメダル！';
+          titleEl.style.color = '#c05621';
+        }
+        soundFanfare();
+      } else {
+        // 練習モード終了時
+        criteriaEl.style.display = 'none';
+        bestBadgeEl.style.display = 'none';
+        medalEl.innerText = '🌸';
+        titleEl.innerText = '10問クリア！ たいへんよくできました！';
+        titleEl.style.color = '#e53e3e';
+        timeEl.innerText = `ミスした数: ${missCount} 回`;
+        confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+        soundFanfare();
+      }
+    }
+
+    function restartMode() {
+      if (currentMode === 'flashcard') {
+        initFlashcard();
+      } else {
+        initInteractive(currentMode);
+      }
+    }
+
+    /* ============================================================
+       モード切替 UI ハンドラ
+       ============================================================ */
+    function switchMode(mode) {
+      if (autoInterval) toggleAutoPlay();
+      currentMode = mode;
+      
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach((t, i) => {
+        t.classList.remove('active');
+        if ((mode === 'flashcard' && i === 0) ||
+            (mode === 'practice' && i === 1) ||
+            (mode === 'test' && i === 2)) {
+          t.classList.add('active');
+        }
+      });
+
+      document.getElementById('resultScreen').style.display = 'none';
+
+      if (mode === 'flashcard') {
+        document.getElementById('flashcardSection').style.display = 'block';
+        document.getElementById('interactiveSection').style.display = 'none';
+        initFlashcard();
+      } else {
+        initInteractive(mode);
+      }
+    }
+
+    // 初期起動
+    initFlashcard();
+  </script>
+</body>
+</html>
